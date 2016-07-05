@@ -109,12 +109,12 @@ namespace Meebey.SmartIrc4net
             this.isValid = false;
         }
         
-        internal override void InitWork(Object stateInfo)
+        internal override async void InitWork(Object stateInfo)
         {
             if (!Valid)
                 return;
             if (DccServer != null) {
-                Connection = DccServer.AcceptTcpClient();
+                Connection = await DccServer.AcceptTcpClientAsync();
                 RemoteEndPoint = (IPEndPoint)Connection.Client.RemoteEndPoint;
                 DccServer.Stop();
                 isConnected = true;
@@ -162,7 +162,7 @@ namespace Meebey.SmartIrc4net
                     Irc.SendMessage(SendType.CtcpRequest, User, "DCC CHAT chat " + HostToDccInt(ExternalIPAdress).ToString() + " " + LocalEndPoint.Port);
                 } else {
                     Connection = new TcpClient();
-                    Connection.Connect(RemoteEndPoint);
+                    //Connection.Client.Connect(RemoteEndPoint);
                     isConnected = true;
                 }
                 return true;

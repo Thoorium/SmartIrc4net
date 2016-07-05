@@ -104,12 +104,12 @@ namespace Meebey.SmartIrc4net
 
         }
         
-        internal override void InitWork(Object stateInfo)
+        internal override async void InitWork(Object stateInfo)
         {
             if (!Valid)
                 return;
             if (DccServer != null) {
-                Connection = DccServer.AcceptTcpClient();
+                Connection = await DccServer.AcceptTcpClientAsync();
                 RemoteEndPoint = (IPEndPoint)Connection.Client.RemoteEndPoint;
                 DccServer.Stop();
                 isConnected = true;
@@ -152,7 +152,7 @@ namespace Meebey.SmartIrc4net
         
                     if (bytes > 0) {
                         DccSendSentBlockEvent(new DccSendEventArgs(this, _Buffer, bytes));
-                        Console.Write(".");
+                        //Console.Write(".");
                     }
                 } while(bytes > 0);
             } else {
@@ -169,7 +169,7 @@ namespace Meebey.SmartIrc4net
             
             isValid = false;
             isConnected = false;
-            Console.WriteLine("--> Filetrangsfer Endet / Bytes sent: " + _SentBytes + " of " + _Filesize);
+            //Console.WriteLine("--> Filetrangsfer Endet / Bytes sent: " + _SentBytes + " of " + _Filesize);
             DccSendStopEvent(new DccEventArgs(this));            
         }
 
@@ -196,7 +196,7 @@ namespace Meebey.SmartIrc4net
                 } else {
                     if(offset==0) {
                         Connection = new TcpClient();
-                        Connection.Connect(RemoteEndPoint);
+                        //Connection.Client.Connect(RemoteEndPoint);
                         isConnected = true;
                     } else {
                         if(_File.CanSeek) {

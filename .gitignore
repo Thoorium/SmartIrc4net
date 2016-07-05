@@ -19,3 +19,7 @@ smartirc4net.pc
 *.suo
 *.user
 *.sln.docstates
+.ds_store
+*.nupkg
+.vscode/
+project.lock.json

@@ -64,12 +64,12 @@ namespace Meebey.SmartIrc4net
         private bool             _AutoNickHandling        = true;
         private bool             _SupportNonRfc;
         private bool             _SupportNonRfcLocked;
-        private StringCollection _Motd                    = new StringCollection();
+        private List<string> _Motd                    = new List<string>();
         private bool             _MotdReceived;
         private Array            _ReplyCodes              = Enum.GetValues(typeof(ReplyCode));
-        private StringCollection _JoinedChannels          = new StringCollection();
-        private Hashtable        _Channels                = Hashtable.Synchronized(new Hashtable(new CaseInsensitiveHashCodeProvider(), new CaseInsensitiveComparer()));
-        private Hashtable        _IrcUsers                = Hashtable.Synchronized(new Hashtable(new CaseInsensitiveHashCodeProvider(), new CaseInsensitiveComparer()));
+        private List<string> _JoinedChannels          = new List<string>();
+        private Hashtable        _Channels                = Hashtable.Synchronized(CollectionsUtil.CreateCaseInsensitiveHashtable());
+        private Hashtable        _IrcUsers                = Hashtable.Synchronized(CollectionsUtil.CreateCaseInsensitiveHashtable());
         private List<ChannelInfo> _ChannelList;
         private Object            _ChannelListSyncRoot = new Object();
         private AutoResetEvent    _ChannelListReceivedEvent;
@@ -413,7 +413,7 @@ namespace Meebey.SmartIrc4net
         /// <summary>
         /// Gets the list of channels we are joined.
         /// </summary>
-        public StringCollection JoinedChannels {
+        public List<string> JoinedChannels {
             get {
                 return _JoinedChannels;
             }
@@ -422,7 +422,7 @@ namespace Meebey.SmartIrc4net
         /// <summary>
         /// Gets the server message of the day.
         /// </summary>
-        public StringCollection Motd {
+        public List<string> Motd {
             get {
                 return _Motd;
             }
@@ -470,11 +470,11 @@ namespace Meebey.SmartIrc4net
         /// </summary>
         /// <param name="addresslist">The list of server hostnames.</param>
         /// <param name="port">The TCP port the server listens on.</param>
-        public new void Connect(string[] addresslist, int port)
+        public new void Connect(string address, int port)
         {
             _SupportNonRfcLocked = true;
             ChannelModeMap = new ChannelModeMap();
-            base.Connect(addresslist, port);
+            base.Connect(address, port);
         }
         
         /// <overloads>
@@ -534,7 +534,7 @@ namespace Meebey.SmartIrc4net
             if (username != null && username.Length > 0) {
                 _Username = username.Replace(" ", "");
             } else {
-                _Username = Environment.UserName.Replace(" ", "");
+                _Username = $"SmartUser{new Random().Next(1, 99999)}";
             }
 
             if (password != null && password.Length > 0) {

@@ -37,9 +37,9 @@ namespace Meebey.SmartIrc4net
     /// <threadsafety static="true" instance="true" />
     public class NonRfcChannel : Channel
     {
-        private Hashtable _Owners = Hashtable.Synchronized(new Hashtable(new CaseInsensitiveHashCodeProvider(), new CaseInsensitiveComparer()));
-        private Hashtable _ChannelAdmins = Hashtable.Synchronized(new Hashtable(new CaseInsensitiveHashCodeProvider(), new CaseInsensitiveComparer()));
-        private Hashtable _Halfops = Hashtable.Synchronized(new Hashtable(new CaseInsensitiveHashCodeProvider(), new CaseInsensitiveComparer()));
+        private Hashtable _Owners = Hashtable.Synchronized(CollectionsUtil.CreateCaseInsensitiveHashtable());
+        private Hashtable _ChannelAdmins = Hashtable.Synchronized(CollectionsUtil.CreateCaseInsensitiveHashtable());
+        private Hashtable _Halfops = Hashtable.Synchronized(CollectionsUtil.CreateCaseInsensitiveHashtable());
 
         /// <summary>
         /// 

@@ -41,10 +41,10 @@ namespace Meebey.SmartIrc4net
     {
         private string           _Name;
         private string           _Key       = String.Empty;
-        private Hashtable        _Users     = Hashtable.Synchronized(new Hashtable(new CaseInsensitiveHashCodeProvider(), new CaseInsensitiveComparer()));
-        private Hashtable        _Ops       = Hashtable.Synchronized(new Hashtable(new CaseInsensitiveHashCodeProvider(), new CaseInsensitiveComparer()));
-        private Hashtable        _Voices    = Hashtable.Synchronized(new Hashtable(new CaseInsensitiveHashCodeProvider(), new CaseInsensitiveComparer()));
-        private StringCollection _Bans      = new StringCollection();
+        private Hashtable        _Users     = Hashtable.Synchronized(CollectionsUtil.CreateCaseInsensitiveHashtable());
+        private Hashtable        _Ops       = Hashtable.Synchronized(CollectionsUtil.CreateCaseInsensitiveHashtable());
+        private Hashtable        _Voices    = Hashtable.Synchronized(CollectionsUtil.CreateCaseInsensitiveHashtable());
+        private List<string> _Bans      = new List<string>();
         private List<string>     _BanExcepts = new List<string>();
         private List<string>     _InviteExcepts = new List<string>();
         private string           _Topic     = String.Empty;
@@ -159,7 +159,7 @@ namespace Meebey.SmartIrc4net
         /// 
         /// </summary>
         /// <value> </value>
-        public StringCollection Bans {
+        public List<string> Bans {
             get {
                 return _Bans;
             }

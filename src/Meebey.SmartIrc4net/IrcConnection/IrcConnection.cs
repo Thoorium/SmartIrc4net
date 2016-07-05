@@ -39,7 +39,8 @@ using System.Text;
 using System.Security.Cryptography.X509Certificates;
 using System.Security.Authentication;
 using System.Threading;
-using Starksoft.Net.Proxy;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Meebey.SmartIrc4net
 {
@@ -74,7 +75,7 @@ namespace Meebey.SmartIrc4net
         private int              _AutoRetryDelay = 30;
         private int              _AutoRetryLimit = 3;
         private bool             _AutoReconnect;
-        private Encoding         _Encoding = Encoding.Default;
+        private Encoding         _Encoding = Encoding.UTF8;
         public bool EnableUTF8Recode { get; set; }
         private int              _SocketReceiveTimeout  = 600;
         private int              _SocketSendTimeout = 600;
@@ -83,11 +84,6 @@ namespace Meebey.SmartIrc4net
         private int              _PingTimeout = 300;
         private Stopwatch PingStopwatch { get; set; }
         private Stopwatch NextPingStopwatch { get; set; }
-        private string           _ProxyHost;
-        private int              _ProxyPort;
-        private ProxyType        _ProxyType = ProxyType.None;
-        private string           _ProxyUsername;
-        private string           _ProxyPassword;
         
         /// <event cref="OnReadLine">
         /// Raised when a \r\n terminated line is read from the socket
@@ -447,69 +443,6 @@ namespace Meebey.SmartIrc4net
                 return PingStopwatch.Elapsed;
             }
         }
-
-        
-        /// <summary>
-        /// If you want to use a Proxy, set the ProxyHost to Host of the Proxy you want to use.
-        /// </summary>
-        public string ProxyHost {
-            get {
-                return _ProxyHost;
-            }
-            set {
-                _ProxyHost = value;
-            }
-        }
-
-        /// <summary>
-        /// If you want to use a Proxy, set the ProxyPort to Port of the Proxy you want to use.
-        /// </summary>
-        public int ProxyPort {
-            get {
-                return _ProxyPort;
-            }
-            set {
-                _ProxyPort = value;
-            }
-        }
-        
-        /// <summary>
-        /// Standard Setting is to use no Proxy Server, if you Set this to any other value,
-        /// you have to set the ProxyHost and ProxyPort aswell (and give credentials if needed)
-        /// Default: ProxyType.None
-        /// </summary>
-        public ProxyType ProxyType {
-            get {
-                return _ProxyType;
-            }
-            set {
-                _ProxyType = value;
-            }
-        }
-        
-        /// <summary>
-        /// Username to your Proxy Server
-        /// </summary>
-        public string ProxyUsername {
-            get {
-                return _ProxyUsername;
-            }
-            set {
-                _ProxyUsername = value;
-            }
-        }
-        
-        /// <summary>
-        /// Password to your Proxy Server
-        /// </summary>
-        public string ProxyPassword {
-            get {
-                return _ProxyPassword;
-            }
-            set {
-                _ProxyPassword = value;
-            }
-        }
         
         /// <summary>
         /// Initializes the message queues, read and write thread
@@ -524,7 +457,7 @@ namespace Meebey.SmartIrc4net
             _SendBuffer[Priority.Medium]      = Queue.Synchronized(new Queue());
             _SendBuffer[Priority.BelowMedium] = Queue.Synchronized(new Queue());
             _SendBuffer[Priority.Low]         = Queue.Synchronized(new Queue());
-
+                
             // setup own callbacks
             OnReadLine        += new ReadLineEventHandler(_SimpleParser);
             OnConnectionError += new EventHandler(_OnConnectionError);
@@ -535,13 +468,13 @@ namespace Meebey.SmartIrc4net
             PingStopwatch = new Stopwatch();
             NextPingStopwatch = new Stopwatch();
 
-            Assembly assm = Assembly.GetAssembly(this.GetType());
-            AssemblyName assm_name = assm.GetName(false);
+            //Assembly assm = Assembly.GetAssembly(this.GetType());
+            //AssemblyName assm_name = assm.GetName(false);
 
-            AssemblyProductAttribute pr = (AssemblyProductAttribute)assm.GetCustomAttributes(typeof(AssemblyProductAttribute), false)[0];
+            //AssemblyProductAttribute pr = (AssemblyProductAttribute)assm.GetCustomAttributes(typeof(AssemblyProductAttribute), false)[0];
 
-            _VersionNumber = assm_name.Version.ToString();
-            _VersionString = pr.Product+" "+_VersionNumber;
+            _VersionNumber = "0.1";//assm_name.Version.ToString();
+            _VersionString = "T 0.1";//pr.Product+" "+_VersionNumber;
         }
         
 #if LOG4NET
@@ -560,7 +493,7 @@ namespace Meebey.SmartIrc4net
         /// <param name="port">Portnumber to connect to</param>
         /// <exception cref="CouldNotConnectException">The connection failed</exception>
         /// <exception cref="AlreadyConnectedException">If there is already an active connection</exception>
-        public void Connect(string[] addresslist, int port)
+        public async Task Connect(string[] addresslist, int port)
         {
             if (_IsConnected) {
                 throw new AlreadyConnectedException("Already connected to: " + Address + ":" + Port);
@@ -581,43 +514,18 @@ namespace Meebey.SmartIrc4net
             try {
                 _TcpClient = new TcpClient();
                 _TcpClient.NoDelay = true;
-                _TcpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, 1);
+                //This is not compatible with .Net Core
+                //_TcpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, 1);
                 // set timeout, after this the connection will be aborted
                 _TcpClient.ReceiveTimeout = _SocketReceiveTimeout * 1000;
                 _TcpClient.SendTimeout = _SocketSendTimeout * 1000;
                 
-                if (_ProxyType != ProxyType.None) {
-                    IProxyClient proxyClient = null;
-                    ProxyClientFactory proxyFactory = new ProxyClientFactory();
-                    // HACK: map our ProxyType to Starksoft's ProxyType
-                    Starksoft.Net.Proxy.ProxyType proxyType = 
-                        (Starksoft.Net.Proxy.ProxyType) Enum.Parse(
-                            typeof(ProxyType), _ProxyType.ToString(), true
-                        );
-                    
-                    if (_ProxyUsername == null && _ProxyPassword == null) {
-                        proxyClient = proxyFactory.CreateProxyClient(
-                            proxyType
-                        );
-                    } else {
-                        proxyClient = proxyFactory.CreateProxyClient(
-                            proxyType,
-                            _ProxyHost,
-                            _ProxyPort,
-                            _ProxyUsername,
-                            _ProxyPassword
-                        );
-                    }
-                    
-                    _TcpClient.Connect(_ProxyHost, _ProxyPort);
-                    proxyClient.TcpClient = _TcpClient;
-                    proxyClient.CreateConnection(Address, port);
-                } else {
-                    _TcpClient.Connect(Address, port);
-                }
+                await _TcpClient.ConnectAsync(Address, port);
+                //_TcpClient.Client.Connect(Address, port);
+                
                 
                 Stream stream = _TcpClient.GetStream();
-                if (_UseSsl) {
+                /*if (_UseSsl) {
                     RemoteCertificateValidationCallback certValidation;
                     if (_ValidateServerCertificate) {
                         certValidation = ServicePointManager.ServerCertificateValidationCallback;
@@ -675,7 +583,7 @@ namespace Meebey.SmartIrc4net
                         throw new CouldNotConnectException("Could not connect to: " + Address + ":" + Port + " " + ex.Message, ex);
                     }
                     stream = sslStream;
-                }
+                }*/
                 if (EnableUTF8Recode) {
                     _Reader = new StreamReader(stream, new PrimaryOrFallbackEncoding(new UTF8Encoding(false, true), _Encoding));
                     _Writer = new StreamWriter(stream, new UTF8Encoding(false, false));
@@ -712,26 +620,26 @@ namespace Meebey.SmartIrc4net
                 if (OnConnected != null) {
                     OnConnected(this, EventArgs.Empty);
                 }
-            } catch (AuthenticationException ex) {
+            } /*catch (AuthenticationException ex) {
 #if LOG4NET
                 Logger.Connection.Error("Connect(): Exception", ex);
 #endif
                 throw new CouldNotConnectException("Could not connect to: " + Address + ":" + Port + " " + ex.Message, ex);
-            } catch (Exception e) {
+            } */catch (Exception e) {
                 if (_Reader != null) {
                     try {
-                        _Reader.Close();
+                        _Reader.Dispose();
                     } catch (ObjectDisposedException) {
                     }
                 }
                 if (_Writer != null) {
                     try {
-                        _Writer.Close();
+                        _Writer.Dispose();
                     } catch (ObjectDisposedException) {
                     }
                 }
                 if (_TcpClient != null) {
-                    _TcpClient.Close();
+                    _TcpClient.Dispose();
                 }
                 _IsConnected = false;
                 IsConnectionError = true;
@@ -757,7 +665,7 @@ namespace Meebey.SmartIrc4net
                     Thread.Sleep(_AutoRetryDelay * 1000);
                     _NextAddress();
                     // FIXME: this is recursion
-                    Connect(_AddressList, _Port);
+                    Connect(_AddressList, _Port).Wait();
                 } else {
                     throw new CouldNotConnectException("Could not connect to: "+Address+":"+Port+" "+e.Message, e);
                 }
@@ -771,7 +679,7 @@ namespace Meebey.SmartIrc4net
         /// <param name="port">Port number to connect to</param>
         public void Connect(string address, int port)
         {
-            Connect(new string[] { address }, port);
+            Connect(new string[] { address }, port).Wait();
         }
 
         /// <summary>
@@ -792,7 +700,7 @@ namespace Meebey.SmartIrc4net
             Logger.Connection.Info("reconnecting...");
 #endif
             Disconnect();
-            Connect(_AddressList, _Port);
+            Connect(_AddressList, _Port).Wait();
         }
         
         /// <summary>
@@ -819,7 +727,7 @@ namespace Meebey.SmartIrc4net
             _IdleWorkerThread.Stop();
             _ReadThread.Stop();
             _WriteThread.Stop();
-            _TcpClient.Close();
+            _TcpClient.Dispose();
             _IsConnected = false;
             _IsRegistered = false;
             
@@ -1111,7 +1019,8 @@ namespace Meebey.SmartIrc4net
 #if LOG4NET
                 _Logger.Debug("Stop(): aborting thread...");
 #endif
-                _Thread.Abort();
+                
+                //_Thread.Abort();
                 // make sure we close the stream after the thread is gone, else
                 // the thread will think the connection is broken!
 #if LOG4NET
@@ -1123,7 +1032,7 @@ namespace Meebey.SmartIrc4net
                 _Logger.Debug("Stop(): closing reader...");
 #endif
                 try {
-                    _Connection._Reader.Close();
+                    _Connection._Reader.Dispose();
                 } catch (ObjectDisposedException) {
                 }
 
@@ -1162,12 +1071,12 @@ namespace Meebey.SmartIrc4net
                             _Connection.IsConnectionError = true;
                         }
                     }
-                } catch (ThreadAbortException) {
+                } /*catch (ThreadAbortException) {
                     Thread.ResetAbort();
 #if LOG4NET
                     Logger.Socket.Debug("ReadThread aborted");
 #endif
-                } catch (Exception ex) {
+                }*/ catch (Exception ex) {
 #if LOG4NET
                     Logger.Socket.Error(ex);
 #endif
@@ -1227,13 +1136,13 @@ namespace Meebey.SmartIrc4net
                 Logger.Connection.Debug("Stopping WriteThread...");
 #endif
                 
-                _Thread.Abort();
+                //_Thread.Abort();
                 // make sure we close the stream after the thread is gone, else
                 // the thread will think the connection is broken!
                 _Thread.Join();
                 
                 try {
-                    _Connection._Writer.Close();
+                    _Connection._Writer.Dispose();
                 } catch (ObjectDisposedException) {
                 }
             }
@@ -1267,12 +1176,12 @@ namespace Meebey.SmartIrc4net
                             _Connection.IsConnectionError = true;
                         }
                     }
-                } catch (ThreadAbortException) {
+                } /*catch (ThreadAbortException) {
                     Thread.ResetAbort();
 #if LOG4NET
                     Logger.Socket.Debug("WriteThread aborted");
 #endif
-                } catch (Exception ex) {
+                } */catch (Exception ex) {
 #if LOG4NET
                     Logger.Socket.Error(ex);
 #endif
@@ -1474,8 +1383,8 @@ namespace Meebey.SmartIrc4net
             /// </summary>
             public void Stop()
             {
-                _Thread.Abort();
-                _Thread.Join();
+                //_Thread.Abort();
+                //_Thread.Join();
             }
 
             private void _Worker()
@@ -1521,12 +1430,12 @@ namespace Meebey.SmartIrc4net
                             break;
                         }
                     }
-                } catch (ThreadAbortException) {
+                } /*catch (ThreadAbortException) {
                     Thread.ResetAbort();
 #if LOG4NET
                     Logger.Socket.Debug("IdleWorkerThread aborted");
 #endif
-                } catch (Exception ex) {
+                } */catch (Exception ex) {
 #if LOG4NET
                     Logger.Socket.Error(ex);
 #endif
