@@ -521,14 +521,14 @@ namespace Meebey.SmartIrc4net
                 _TcpClient.SendTimeout = _SocketSendTimeout * 1000;
                 
                 await _TcpClient.ConnectAsync(Address, port);
-                //_TcpClient.Client.Connect(Address, port);
-                
                 
                 Stream stream = _TcpClient.GetStream();
-                /*if (_UseSsl) {
+                if (_UseSsl) {
                     RemoteCertificateValidationCallback certValidation;
                     if (_ValidateServerCertificate) {
-                        certValidation = ServicePointManager.ServerCertificateValidationCallback;
+                        certValidation = null;
+                        //ServicePointManager is not supported in .net core. We should move to X509Certificate2 for validation
+                        //certValidation = ServicePointManager.ServerCertificateValidationCallback;
                         if (certValidation == null) {
                             certValidation = delegate(object sender,
                                 X509Certificate certificate,
@@ -568,11 +568,11 @@ namespace Meebey.SmartIrc4net
                         if (_SslClientCertificate != null) {
                             var certs = new X509Certificate2Collection();
                             certs.Add(_SslClientCertificate);
-                            sslStream.AuthenticateAsClient(Address, certs,
-                                                           SslProtocols.Default,
-                                                           false);
+                            sslStream.AuthenticateAsClientAsync(Address, certs,
+                                                           SslProtocols.Tls12,
+                                                           false).Wait();
                         } else {
-                            sslStream.AuthenticateAsClient(Address);
+                            sslStream.AuthenticateAsClientAsync(Address).Wait();
                         }
                     } catch (IOException ex) {
 #if LOG4NET
@@ -583,7 +583,7 @@ namespace Meebey.SmartIrc4net
                         throw new CouldNotConnectException("Could not connect to: " + Address + ":" + Port + " " + ex.Message, ex);
                     }
                     stream = sslStream;
-                }*/
+                }
                 if (EnableUTF8Recode) {
                     _Reader = new StreamReader(stream, new PrimaryOrFallbackEncoding(new UTF8Encoding(false, true), _Encoding));
                     _Writer = new StreamWriter(stream, new UTF8Encoding(false, false));
