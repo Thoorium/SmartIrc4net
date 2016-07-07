@@ -24,7 +24,7 @@
 using System;
 using System.IO;
 using System.Net;
-using System.Threading;
+using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 
@@ -216,7 +216,7 @@ namespace Meebey.SmartIrc4net
         public void InitDccChat(string user, bool passive, Priority priority) {
             DccChat chat = new DccChat(this, user, _ExternalIpAdress, passive, priority);
             _DccConnections.Add(chat);
-            ThreadPool.QueueUserWorkItem(new WaitCallback(chat.InitWork));
+            Task.Factory.StartNew(() => {chat.InitWork();});
             RemoveInvalidDccConnections();
         }
         
@@ -285,7 +285,7 @@ namespace Meebey.SmartIrc4net
         public void SendFile(string user, Stream file, string filename, long filesize, DccSpeed speed, bool passive,  Priority priority) {
             DccSend send = new DccSend(this, user, _ExternalIpAdress, file, filename, filesize, speed,  passive, priority);
             _DccConnections.Add(send);
-            ThreadPool.QueueUserWorkItem(new WaitCallback(send.InitWork));
+            Task.Factory.StartNew(() => { send.InitWork();});
             RemoveInvalidDccConnections();
         }
         #endregion
@@ -375,7 +375,8 @@ namespace Meebey.SmartIrc4net
                     case "CHAT":
                         DccChat chat = new DccChat(this, _ExternalIpAdress, e);
                         _DccConnections.Add(chat);
-                        ThreadPool.QueueUserWorkItem(new WaitCallback(chat.InitWork));
+                        
+                        Task.Factory.StartNew(() => { chat.InitWork();});
                         break;
                     case "SEND":
                         if (e.Data.MessageArray.Length > 6 &&  (FilterMarker(e.Data.MessageArray[6]) != "T")) {
@@ -392,7 +393,7 @@ namespace Meebey.SmartIrc4net
                         } else {
                             DccSend send = new DccSend(this, _ExternalIpAdress, e);
                             _DccConnections.Add(send);
-                            ThreadPool.QueueUserWorkItem(new WaitCallback(send.InitWork));
+                            Task.Factory.StartNew(() => { send.InitWork();});
                         }
                         break;
                     case "RESUME":

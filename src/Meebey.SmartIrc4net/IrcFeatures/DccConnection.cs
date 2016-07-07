@@ -160,7 +160,7 @@ namespace Meebey.SmartIrc4net
             Timeout = DateTime.Now.AddSeconds(120);
         }
 
-        internal virtual void InitWork(Object stateInfo)
+        internal virtual void InitWork()
         {
             throw new NotSupportedException();
         }

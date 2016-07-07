@@ -24,7 +24,7 @@
 using System;
 using System.IO;
 using System.Net;
-using System.Threading;
+using System.Threading.Tasks;
 using System.Net.Sockets;
 
 namespace Meebey.SmartIrc4net
@@ -109,7 +109,7 @@ namespace Meebey.SmartIrc4net
             this.isValid = false;
         }
         
-        internal override async void InitWork(Object stateInfo)
+        internal override async void InitWork()
         {
             if (!Valid)
                 return;
@@ -120,7 +120,7 @@ namespace Meebey.SmartIrc4net
                 isConnected = true;
             } else {
                 while(!isConnected) {
-                    Thread.Sleep(500);    // We wait till Request is Accepted (or jump out when rejected)
+                    Task.Delay(500).Wait();    // We wait till Request is Accepted (or jump out when rejected)
                     if (reject) {
                         isValid = false;
                         return;

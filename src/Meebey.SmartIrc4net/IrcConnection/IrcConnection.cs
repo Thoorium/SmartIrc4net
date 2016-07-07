@@ -662,7 +662,7 @@ namespace Meebey.SmartIrc4net
 #if LOG4NET
                     Logger.Connection.Debug("delaying new connect attempt for "+_AutoRetryDelay+" sec");
 #endif
-                    Thread.Sleep(_AutoRetryDelay * 1000);
+                    Task.Delay(AutoRetryDelay * 1000).Wait();
                     _NextAddress();
                     // FIXME: this is recursion
                     Connect(_AddressList, _Port).Wait();
@@ -955,7 +955,7 @@ namespace Meebey.SmartIrc4net
             try {
                 if (AutoReconnect) {
                     // prevent connect -> exception -> connect flood loop
-                    Thread.Sleep(AutoRetryDelay * 1000);
+                    Task.Delay(AutoRetryDelay * 1000).Wait();
                     // lets try to recover the connection
                     Reconnect();
                 } else {
@@ -975,7 +975,7 @@ namespace Meebey.SmartIrc4net
             private static readonly log4net.ILog _Logger = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 #endif
             private IrcConnection  _Connection;
-            private Thread         _Thread;
+            private CancellationTokenSource _CancellationTokenSource;
             private Queue          _Queue = Queue.Synchronized(new Queue());
 
             public AutoResetEvent  QueuedEvent;
@@ -1001,10 +1001,10 @@ namespace Meebey.SmartIrc4net
             /// </summary>
             public void Start()
             {
-                _Thread = new Thread(new ThreadStart(_Worker));
-                _Thread.Name = "ReadThread ("+_Connection.Address+":"+_Connection.Port+")";
-                _Thread.IsBackground = true;
-                _Thread.Start();
+                _CancellationTokenSource = new CancellationTokenSource();
+                Task.Factory.StartNew(() => {
+                _Worker();
+                }, _CancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
             }
 
             /// <summary>
@@ -1018,15 +1018,10 @@ namespace Meebey.SmartIrc4net
                 
 #if LOG4NET
                 _Logger.Debug("Stop(): aborting thread...");
-#endif
-                
-                //_Thread.Abort();
+#endif          
+                _CancellationTokenSource.Cancel();
                 // make sure we close the stream after the thread is gone, else
                 // the thread will think the connection is broken!
-#if LOG4NET
-                _Logger.Debug("Stop(): joining thread...");
-#endif
-                _Thread.Join();
                 
 #if LOG4NET
                 _Logger.Debug("Stop(): closing reader...");
@@ -1049,8 +1044,10 @@ namespace Meebey.SmartIrc4net
                 try {
                     string data = "";
                     try {
-                        while (_Connection.IsConnected &&
-                               ((data = _Connection._Reader.ReadLine()) != null)) {
+                        while (!_CancellationTokenSource.Token.IsCancellationRequested &&
+                                _Connection.IsConnected &&
+                               ((data = _Connection._Reader.ReadLine()) != null)
+                               ) {
                             _Queue.Enqueue(data);
                             QueuedEvent.Set();
 #if LOG4NET
@@ -1090,7 +1087,7 @@ namespace Meebey.SmartIrc4net
         private class WriteThread
         {
             private IrcConnection  _Connection;
-            private Thread         _Thread;
+            private CancellationTokenSource _CancellationTokenSource;
             private int            _HighCount;
             private int            _AboveMediumCount;
             private int            _MediumCount;
@@ -1121,10 +1118,10 @@ namespace Meebey.SmartIrc4net
             /// </summary>
             public void Start()
             {
-                _Thread = new Thread(new ThreadStart(_Worker));
-                _Thread.Name = "WriteThread ("+_Connection.Address+":"+_Connection.Port+")";
-                _Thread.IsBackground = true;
-                _Thread.Start();
+                _CancellationTokenSource = new CancellationTokenSource();
+                Task.Factory.StartNew(() => {
+                _Worker();
+                }, _CancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
             }
 
             /// <summary>
@@ -1136,10 +1133,9 @@ namespace Meebey.SmartIrc4net
                 Logger.Connection.Debug("Stopping WriteThread...");
 #endif
                 
-                //_Thread.Abort();
                 // make sure we close the stream after the thread is gone, else
                 // the thread will think the connection is broken!
-                _Thread.Join();
+                _CancellationTokenSource.Cancel();
                 
                 try {
                     _Connection._Writer.Dispose();
@@ -1154,12 +1150,12 @@ namespace Meebey.SmartIrc4net
 #endif
                 try {
                     try {
-                        while (_Connection.IsConnected) {
+                        while (!_CancellationTokenSource.Token.IsCancellationRequested && _Connection.IsConnected) {
                             QueuedEvent.WaitOne();
                             var isBufferEmpty = false;
                             do {
                                 isBufferEmpty = _CheckBuffer() == 0;
-                                Thread.Sleep(_Connection._SendDelay);
+                                Task.Delay(_Connection._SendDelay).Wait();
                             } while (!isBufferEmpty);
                         }
                     } catch (IOException e) {
@@ -1352,7 +1348,7 @@ namespace Meebey.SmartIrc4net
         private class IdleWorkerThread
         {
             private IrcConnection   _Connection;
-            private Thread          _Thread;
+            private CancellationTokenSource _CancellationTokenSource;
 
             /// <summary>
             /// 
@@ -1372,10 +1368,10 @@ namespace Meebey.SmartIrc4net
                 _Connection.NextPingStopwatch.Reset();
                 _Connection.NextPingStopwatch.Start();
                 
-                _Thread = new Thread(new ThreadStart(_Worker));
-                _Thread.Name = "IdleWorkerThread ("+_Connection.Address+":"+_Connection.Port+")";
-                _Thread.IsBackground = true;
-                _Thread.Start();
+                _CancellationTokenSource = new CancellationTokenSource();
+                Task.Factory.StartNew(() => {
+                _Worker();
+                }, _CancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
             }
 
             /// <summary>
@@ -1383,8 +1379,7 @@ namespace Meebey.SmartIrc4net
             /// </summary>
             public void Stop()
             {
-                //_Thread.Abort();
-                //_Thread.Join();
+                _CancellationTokenSource.Cancel();
             }
 
             private void _Worker()
@@ -1393,8 +1388,8 @@ namespace Meebey.SmartIrc4net
                 Logger.Socket.Debug("IdleWorkerThread started");
 #endif
                 try {
-                    while (_Connection.IsConnected ) {
-                        Thread.Sleep(_Connection._IdleWorkerInterval * 1000);
+                    while (!_CancellationTokenSource.Token.IsCancellationRequested && _Connection.IsConnected ) {
+                        Task.Delay(_Connection._IdleWorkerInterval * 1000).Wait();
                         
                         // only send active pings if we are registered
                         if (!_Connection.IsRegistered) {
