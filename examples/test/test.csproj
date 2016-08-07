@@ -1,5 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
@@ -10,6 +10,8 @@
     <RootNamespace>Test</RootNamespace>
     <StartupObject>Test</StartupObject>
     <AssemblyName>test</AssemblyName>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -25,6 +27,7 @@
     <RunWithWarnings>false</RunWithWarnings>
     <Externalconsole>true</Externalconsole>
     <AssemblyOriginatorKeyFile>.</AssemblyOriginatorKeyFile>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>none</DebugType>
@@ -38,13 +41,8 @@
     <Execution>
       <Execution clr-version="Net_2_0" />
     </Execution>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\SmartIrc4net.csproj">
-      <Project>{91D3003B-7E65-4EAF-8EE1-DA43832E7A9C}</Project>
-      <Name>SmartIrc4net</Name>
-    </ProjectReference>
-  </ItemGroup>
   <ItemGroup>
     <Reference Include="System" />
   </ItemGroup>
@@ -52,5 +50,14 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="Test.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\SmartIrc4net.csproj">
+      <Project>{91d3003b-7e65-4eaf-8ee1-da43832e7a9c}</Project>
+      <Name>SmartIrc4net</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.config" />
   </ItemGroup>
 </Project>
